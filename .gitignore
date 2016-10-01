@@ -1,0 +1,9 @@
+# Mac OS X DS_Store
+.DS_Store
+
+# Dependency directory
+node_modules
+
+# Env files
+*.sublime-project
+*.sublime-workspace

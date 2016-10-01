@@ -1,0 +1,15 @@
+{
+  "name": "simple-spotify-search",
+  "version": "1.0.0",
+  "description": "A simple JQuery/ES6 app that searches artists from the Spotify API",
+  "main": "index.js",
+  "scripts": {
+    "app": "node ./index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ethan Ensler",
+  "license": "MIT",
+  "devDependencies": {
+    "express": "^4.14.0"
+  }
+}
