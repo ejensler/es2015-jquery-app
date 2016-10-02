@@ -1,6 +1,8 @@
 body {
 	margin: 0;
 	font-family: 'Roboto Slab', serif;
+	-webkit-user-select: none;
+	cursor: default;
 }
 
 * {
@@ -39,4 +41,59 @@ header {
 header h1 {
     font-weight: lighter;
     font-size: 3em;
+}
+
+.artist-search-container, .search-results {
+	margin: 0 auto;
+	width: 300px;
+}
+
+input {
+	width: 100%;
+	font-size: 1.3em;
+	font-family: 'Roboto Slab', serif;
+	background-color: #666;
+	color: white;
+	border: none;
+	padding: 10px 5px;
+}
+
+input:focus {
+	outline: none;
+}
+
+.search-results {
+    background: white;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+}
+
+.search-results:empty {
+	display: none;
+}
+
+.search-results > div {
+	display: table;
+	cursor: pointer;
+	border-bottom: 1px solid #ccc;
+	transition: background 0.2s ease-in-out;
+}
+
+.search-results > div:hover {
+	background: #eee;
+}
+
+.search-results > div img, .search-results > div span {
+	display: table-cell;
+}
+
+.search-results > div img {
+	width: 80px;
+	height: 80px;
+	object-fit: cover;
+}
+
+.search-results > div span {
+	vertical-align: middle;
+	width: 100%;
+    padding-left: 20px;
 }
