@@ -73,6 +73,7 @@ input:focus {
 
 .search-results > div {
 	display: table;
+	height: 80px;
 	cursor: pointer;
 	border-bottom: 1px solid #ccc;
 	transition: background 0.2s ease-in-out;

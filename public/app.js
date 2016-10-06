@@ -1,77 +1,133 @@
-/*
-
-Your task is to create an artist search webpage using the public Spotify API.  As a growth engineer at Zenefits you'll function with a good bit of autonomy, so we expect you to prioritize effectively, engage your creativity, and deliver a usable and aesthetically appealing product.
-
-To that end we'll keep the requirements minimal.  Make it your own!  But at the least check these boxes:
-Constrain all your work to onewebpageonly (no constraints on number of files)
-Implement some artist search functionality
-Display the artist name and image on the page
-Accommodate every UI edge case (varying screen widths, zero data, etc.)
-Populate your data asynchronously using the linked Spotify API
-HTML, CSS, and Javascript should be sufficient for this project. We don’t want you to spend time figuring out a complex build system, so please don’t use a front-end framework such as React or Angular. We want to see your code, not the framework’s abstractions! You should, however, feel free to use other tools such as jQuery or Bootstrap, as well as a templating tool like Underscore/Lodash. Also, just as a note, the Spotify endpoints you’ll probably want to hit do not require auth.
-
-We'll evaluate usability and visual quality, page structure and layout, code organization, feature selection, and level of completion. You’re welcome to spend as much time as you like; we generally recommend about three hours or so.
-
-Folder should contain a readme with instructions to run your project. When you're done, `tar czf fname_lname_zengrowth.tgz your_project_folder` and send it back.
-
-*/
-
-
-$(function(){
-
-class Header {
-  constructor() {
-    this.title = "Spotify Search";
+// Component is the base class that does most of the work behind the scenes for a component.
+// It handles all the lifecycle events.
+class Component {
+  constructor(parentId, props) {
+    this.parentId = parentId;
+    this.props = {};
+    this.children = {};
+    $.extend(this.props, props);
+    this.state = {};
+    this.id = this.constructor.name.toLowerCase();
+    this._noop = () => {};
+    this._mounted = false;
   }
 
-  render() {
-    return $(_.template(`
-      <header>
-        <h1><%= title %></h1>
-      </header>
-    `)(this));
+  mount(rendered) {
+    console.log(`mounting ${this.id}`);
+    rendered.attr({id: this.id});
+    $(`#${this.parentId}`).append(rendered);
+    this._mounted = true;
+  }
+
+  remount(rendered) {
+    console.log(`re-mounting ${this.id}`);
+    rendered.attr({id: this.id});
+    const replaced = $(`#${this.parentId} #${this.id}`).replaceWith(rendered);
+    if (replaced.length === 0) {
+      console.log(`#${this.id} not found. mounting normally.`);
+      this.mount(rendered);
+    }
+  }
+
+  unmount() {
+    $(`#${this.parentId}`).children().remove();
+    this._mounted = false;
+  }
+
+  _kickoffRenderLifecycle() {
+    if (!this.render) throw new Error(`${this.name} must contain a render function`)
+    console.log(`rendering ${this.id} with props and state:`);
+    console.log(this.props)
+    console.log(this.state)
+    const rendered = this.render(this.props, this.state);
+    this.beforeMount ? this.beforeMount(rendered) : this.noop;
+    this._mounted ? this.remount(rendered) : this.mount(rendered);
+    this.afterMount ? this.afterMount(rendered) : this.noop;
+  }
+
+  initialize(newProps) {
+    $.extend(this.props, newProps);
+    this._kickoffRenderLifecycle();
+  }
+
+  setState(newState, callback) {
+    console.log('setState:');
+    console.log(newState)
+    Object.keys(newState).forEach(key => {
+      this.state[key] = newState[key];
+    });
+    this._kickoffRenderLifecycle();
+    callback ? callback() : this._noop;
   }
 }
 
-class SearchResult {
-  render(result) {
+class SearchResult extends Component {
+  constructor(parentId, props) {
+    super(parentId, props);
+  }
+
+  render(props) {
     return $(_.template(`
       <div>
         <img src="<%= images.length > 0 ? images[1].url : '' %>" />
         <span><%= name %></span>
       </div>
-    `)(result));
+    `)(props.result));
   }
 }
 
-class SearchResults {
-  render(results) {
-    let searchResults = results.map(result => {
-      return new SearchResult().render(result);
-    }).reduce((prev, next) => {
-      return prev.add(next);
-    }, $());
-    return $('<div class="search-results"></div>').append(searchResults);
+class SearchResults extends Component {
+  constructor(parentId, props) {
+    super(parentId, props);
+    this.children.SearchResults = [];
+  }
+
+  render(props) {
+    const template = $('<div class="search-results"></div>');
+    this.children.SearchResults = [];
+    if (props.results.length > 0) {
+      this.children.SearchResults = props.results.map(result => {
+        return new SearchResult(this.id, { result: result });
+      });
+    } else if (props.searchText && !props.isSearching) {
+      template.append('<div><span>Artist not found<span></div>');
+    }
+    return template;
+  }
+
+  // Since we're creating a new SearchResult component every time we receive a new set of search
+  // results (we have to, since we don't know in advance how many we need to mount), we need to
+  // manually unmount each before re-mounting.
+  beforeMount() {
+    this.children.SearchResults.forEach(result => {
+      result.unmount();
+    });
+  }
+
+  afterMount(rendered) {
+    this.children.SearchResults.forEach(result => {
+      result.initialize();
+    });
   }
 }
 
-class ArtistSearchBox {
-  constructor() {
-    this.endpoint = 'https://api.spotify.com/v1/search';
+class SearchBox extends Component {
+  constructor(parentId, props) {
+    super(parentId, props);
     this.state = {
       searchText: '',
-      results: []
+      results: [],
+      isSearching: false
     }
-    this.SearchResults = new SearchResults();
-    this.input = null;
+    this.children.SearchResults = new SearchResults(this.id);
   }
 
-  searchApi() {
+  searchApi(searchText) {
     const self = this;
     $.get({
-      url: this.endpoint,
+      url: this.props.endpoint,
       data: {
-        q: self.state.searchText,
+        q: searchText,
         type: 'artist',
         limit: 6
       },
@@ -82,62 +138,101 @@ class ArtistSearchBox {
   }
 
   onGetSuccess(data) {
-    console.log(`GET success ${ new Date().toLocaleString() }`)
-    this.state.results = data.artists.items;
-    appRerender();
+    console.log(`GET success ${ new Date().toLocaleString() }`);
+    this.setState({
+      results: data.artists.items,
+      isSearching: false
+     });
   }
 
   onGetError(res) {
     throw new Error(`error on ${this.state.endpoint} GET: ${res}`);
   }
 
-  setupStateChangeHandlers(template) {
-    this.input = template.find('input');
-    let self = this;
-    function onKeyup() {
-      self.state.searchText = $(this).val();
-      if (self.state.searchText.length > 0) {
-        self.searchApi();
-      }
-    }
-    this.input.keyup(_.debounce(onKeyup, 300));
-    return template;
-  }
-
-  setInputFocus() {
-    this.input.focus();
-    const textLength = this.input.val().length;
-    this.input[0].setSelectionRange(textLength, textLength);
-  }
-
-  render() {
-    const searchResults = this.SearchResults.render(this.state.results);
-    let template = $(_.template(`
+  render(props, state) {
+    return $(_.template(`
       <section class="artist-search-container">
         <input autofocus=true
           type="text"
           placeholder="e.g. Drake, Tame Impala, etc."
           value="<%= state.searchText %>" />
       </section>
-    `)(this));
-    template = this.setupStateChangeHandlers(template);
-    return template.add(searchResults);
+    `)({ props, state }));
+  }
+
+  beforeMount(rendered) {
+    const input = rendered.find('input');
+    let self = this;
+    function onKeyup() {
+      const newSearchText = $(this).val().trim();
+      self.setState({
+        searchText: newSearchText,
+        isSearching: true
+      }, () => {
+        if (newSearchText.length > 0) {
+          self.searchApi(newSearchText);
+        }
+      });
+    }
+    // Prevent excessive calls to the API by waiting for the user to finish
+    // typing their search query
+    input.keyup(_.debounce(onKeyup, 300));
+  }
+
+  setInputFocus(rendered) {
+    const input = rendered.find('input');
+    input.focus();
+    const textLength = input.val().length;
+    input[0].setSelectionRange(textLength, textLength);
+  }
+
+  afterMount(rendered) {
+    this.children.SearchResults.initialize({
+      results: this.state.results,
+      searchText: this.state.searchText,
+      isSearching: this.state.isSearching
+    });
+    this.setInputFocus(rendered);
   }
 }
 
-class App {
-  constructor() {
-    this.Header = new Header();
-    this.ArtistSearchBox = new ArtistSearchBox();
+class Header extends Component {
+  constructor(parentId, props) {
+    super(parentId, props);
   }
+
+  render(props, state) {
+    return $(_.template(`
+      <header>
+        <h1><%= props.title %></h1>
+      </header>
+    `)({ props, state }));
+  }
+}
+
+class App extends Component {
+  constructor(parentId) {
+    super(parentId);
+    this.children.Header = new Header(this.id, { title: "Spotify Artist Search"});
+    this.children.SearchBox = new SearchBox(this.id, {
+      endpoint: 'https://api.spotify.com/v1/search',
+      resultsText: 'artists'
+    });
+  }
+
   render() {
-    $('#app-root').html(this.Header.render().add(this.ArtistSearchBox.render()));
-    this.ArtistSearchBox.setInputFocus();
+    return $('<div class="app-main"></div>');
+  }
+
+  afterMount() {
+    this.children.Header.initialize();
+    this.children.SearchBox.initialize();
   }
 }
 
-const app = new App();
-const appRerender = app.render.bind(app);
-appRerender();
+$(function() {
+
+  const app = new App('root');
+  app.initialize();
 
 });
