@@ -1,6 +1,7 @@
 {
-  "name": "simple-spotify-search",
+  "name": "es2015-jquery-app",
   "version": "1.0.0",
+  "repository": "https://github.com/ejensler/es2015-jquery-app.git",
   "description": "A simple JQuery/ES6 app that searches artists from the Spotify API",
   "main": "index.js",
   "scripts": {

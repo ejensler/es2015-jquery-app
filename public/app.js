@@ -1,5 +1,3 @@
-// Component is the base class that does most of the work behind the scenes for a component.
-// It handles all the lifecycle events.
 class Component {
   constructor(parentId, props) {
     this.parentId = parentId;
@@ -13,18 +11,15 @@ class Component {
   }
 
   mount(rendered) {
-    console.log(`mounting ${this.id}`);
     rendered.attr({id: this.id});
     $(`#${this.parentId}`).append(rendered);
     this._mounted = true;
   }
 
   remount(rendered) {
-    console.log(`re-mounting ${this.id}`);
     rendered.attr({id: this.id});
     const replaced = $(`#${this.parentId} #${this.id}`).replaceWith(rendered);
     if (replaced.length === 0) {
-      console.log(`#${this.id} not found. mounting normally.`);
       this.mount(rendered);
     }
   }
@@ -36,13 +31,11 @@ class Component {
 
   _kickoffRenderLifecycle() {
     if (!this.render) throw new Error(`${this.name} must contain a render function`)
-    console.log(`rendering ${this.id} with props and state:`);
-    console.log(this.props)
-    console.log(this.state)
+
     const rendered = this.render(this.props, this.state);
-    this.beforeMount ? this.beforeMount(rendered) : this.noop;
+    this.beforeMount ? this.beforeMount(rendered) : this._noop();
     this._mounted ? this.remount(rendered) : this.mount(rendered);
-    this.afterMount ? this.afterMount(rendered) : this.noop;
+    this.afterMount ? this.afterMount(rendered) : this._noop();
   }
 
   initialize(newProps) {
@@ -50,14 +43,14 @@ class Component {
     this._kickoffRenderLifecycle();
   }
 
-  setState(newState, callback) {
-    console.log('setState:');
+  setState(newState, preventRender, callback) {
+    console.log(`setting state for ${this.id}:`);
     console.log(newState)
     Object.keys(newState).forEach(key => {
       this.state[key] = newState[key];
     });
-    this._kickoffRenderLifecycle();
-    callback ? callback() : this._noop;
+    preventRender ? this._noop() : this._kickoffRenderLifecycle();
+    callback ? callback() : this._noop();
   }
 }
 
@@ -69,7 +62,7 @@ class SearchResult extends Component {
   render(props) {
     return $(_.template(`
       <div>
-        <img src="<%= images.length > 0 ? images[1].url : '' %>" />
+        <img src="<%= images.length > 0 ? images[1].url : 'content/music-icon.png' %>" />
         <span><%= name %></span>
       </div>
     `)(props.result));
@@ -150,6 +143,8 @@ class SearchBox extends Component {
   }
 
   render(props, state) {
+    console.log(`rendering ${this.id} state:`);
+    console.log(this.state)
     return $(_.template(`
       <section class="artist-search-container">
         <input autofocus=true
@@ -164,19 +159,21 @@ class SearchBox extends Component {
     const input = rendered.find('input');
     let self = this;
     function onKeyup() {
-      const newSearchText = $(this).val().trim();
+      const newSearchText = $(this).val();
       self.setState({
         searchText: newSearchText,
-        isSearching: true
-      }, () => {
-        if (newSearchText.length > 0) {
+      }, true, () => {
+        if (newSearchText.length > 0 && !self.state.isSearching) {
           self.searchApi(newSearchText);
+          self.setState({
+            isSearching: true
+          }, true);
         }
       });
     }
     // Prevent excessive calls to the API by waiting for the user to finish
     // typing their search query
-    input.keyup(_.debounce(onKeyup, 300));
+    input.keyup(_.debounce(onKeyup, 750));
   }
 
   setInputFocus(rendered) {
@@ -221,7 +218,7 @@ class App extends Component {
   }
 
   render() {
-    return $('<div class="app-main"></div>');
+    return $(`<div class="app-main"></div>`);
   }
 
   afterMount() {

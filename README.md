@@ -1,21 +1,22 @@
 # Spotify Artist Search
 
-A JQuery/lodash/ES2015 app that searches artists using the Spotify API.
+A JQuery/ES2015 app that searches artists using the Spotify API.
 
 ## Running
-There is no build process, but to run the app locally, express is used to mimic a server.
-1)  `npm install` 
-2) `npm run app`
-3) In Chrome, go to `localhost:8000`
+There is no build process, but to run the app locally, `express` is used to mimic a server.
+
+1. `npm install` 
+2. `npm run app`
+3. In Chrome, go to `localhost:8000`
 
 ## Design Philosophy
 This app was designed to take advantage of modern browser capabilities but to stay lightweight, meaning no frameworks. The most important consideration was to easily be able to reason about app state.
 
 ### Intro
-One of the biggest challenges of building an app without a modern framework like Angular or React is application state management. JQuery, though a useful tool, tends to lead to poorly-written code due to its imperative syntax (hence why frameworks with data-binding abstractions became popular in the first place). In pure JQuery apps, application state is "stored" in the DOM, but the DOM is also what the user is interacting with. jQuery apps are usually written with some HTML template being the intial view, and event handlers are attached to interactive elements (buttons, form fields, etc.). These events lead to the app performing some logic and then usually updating the DOM. As apps get more complex, what components are updating when and how exactly the app will look as a result can become very hard to determine, especially when asynchronous calls are made. Thus, it becomes desireable to have some application code representing app state, and to put in protections around how that state gets updated so it happens in a deterministic way. Enter `Component` class.
+One of the biggest challenges of building an app without a modern framework like Angular or React is application state management. JQuery, though a useful tool, tends to lead to poorly-written code due to its imperative syntax (hence why frameworks with data-binding abstractions became popular in the first place). In pure JQuery apps, application state is "stored" in the DOM, but the DOM is also what the user is interacting with. jQuery apps are usually written with some HTML template being the intial view, and event handlers are attached to interactive elements (buttons, form fields, etc.). These events lead to the app performing some logic and then usually updating the DOM. As apps get more complex, what components are updating when and how exactly the app will look as a result can become very hard to determine, especially when asynchronous calls are made. Thus, it becomes desireable to have some application code representing app state, and to put in protections around how that state gets updated so it happens in a deterministic way. Enter the `Component` class.
 
 ### The `Component` class
-This is an ES2015 `class` that handles the lifecycle of mounting, rendering, and state changes behind the scenes for an application component. When a component extends the `Component` class, the only thing that component needs is to call the constructor and have a `render` function, and other lifecycle hooks as desired, just like React. To instantiate a component, it's as simple as:
+This is an ES2015 `class` that handles the lifecycle of mounting, rendering, and state changes behind the scenes for an application component. When a component extends the `Component` class, the only thing that component needs to do is to call the constructor and have a `render` function, and other lifecycle hooks as desired, just like React. To instantiate a component, it's as simple as:
 ```
 const app = new App('id');
 app.initialize();
@@ -24,7 +25,7 @@ where `id` is a string id attribute in the html. This id tells the component whe
 
 The component constructor call's 2nd param and the `intialize` function's first param are properties that are then usable by the component as `props` (just like React). Components also have internal `state`, which, again like React, is meant to represent application state specific to that component.
 
-`Render` is a function of external `props` and internal `state` and must return a jQuery element representing the DOM to mount. If event handlers are needed, the rendered element is passed into the `beforeMount` function. If child components are needed, they should be intialized in the `afterMount` function, since they require the parent to be attached to the DOM first.
+`Render` is a function of external `props` and internal `state` and must return a jQuery element representing the DOM to mount. If event handlers are needed, they can be added in the `beforeMount` function, where the rendered element is passed in. If child components are needed, they should be intialized in the `afterMount` function, since they require the parent to be attached to the DOM first.
 
 For such a small app with minimal data flow, additions like a state-handling library (e.g. Redux) are not needed. Further, jQuery is fast enough that a virtual DOM implementation is not needed, but in theory one could be added to the Component class.
 
